@@ -1,0 +1,12 @@
+[submodule "lua/vendor/lua-resty-template"]
+	path = lua/vendor/lua-resty-template
+	url = https://github.com/bungle/lua-resty-template.git
+[submodule "assets/vendor/fingerprintjs2"]
+	path = assets/vendor/fingerprintjs2
+	url = https://github.com/Valve/fingerprintjs2.git
+[submodule "assets/vendor/moment"]
+	path = assets/vendor/moment
+	url = https://github.com/moment/moment.git
+[submodule "assets/vendor/clipboard.js"]
+	path = assets/vendor/clipboard.js
+	url = https://github.com/zenorocha/clipboard.js.git
