@@ -10,3 +10,6 @@
 [submodule "assets/vendor/clipboard.js"]
 	path = assets/vendor/clipboard.js
 	url = https://github.com/zenorocha/clipboard.js.git
+[submodule "assets/vendor/highlight.js"]
+	path = assets/vendor/highlight.js
+	url = https://github.com/isagalaev/highlight.js.git

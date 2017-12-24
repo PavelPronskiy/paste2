@@ -31,10 +31,12 @@ paste.settings.messagesFadeTimeInOut = 500
 paste.settings.messagesViewTimeout = 2000
 paste.settings.limitPastesByIPaddr = 100
 paste.settings.minMessageLength = 5
+paste.settings.minRedisMessageLength = 14
 paste.settings.maxMessageLength = 1600000
 paste.settings.defaults.expire = 604800 -- 7 days
 paste.settings.debug = true -- 7 days
 paste.redis.timeout = 1000
+paste.md5Len = 32
 
 paste.redis.mapPool = {
 	["127.0.0.3"] = 6379,
@@ -59,20 +61,21 @@ paste.redis.prefix = {
 	["rev"] = "r"
 }
 
-function paste.ngx.headers(object)
+function paste.ngx.headers(o)
 
 	 local policy = {}
 	 local k = {}
 
-	    if object.header == 'json'
+	    if o.header == 'json'
 	  then ngx.header["Content-Type"] = 'application/json'
-	elseif object.header == 'html'
+	elseif o.header == 'html'
 	  then ngx.header["Content-Type"] = 'Content-type: text/html; charset=utf-8'
-	elseif object.header == 'text'
+	elseif o.header == 'text'
 	  then ngx.header["Content-Type"] = 'Content-type: text/plain; charset=utf-8'
 	   end
-
+		 
 	ngx.header["Cache-Control"] = "public"
+	  -- ngx.say(o.header);
 	ngx.status = ngx.HTTP_OK
 end
 
@@ -91,18 +94,47 @@ end
 
 -- finally output data
 function paste.construct.message(o)
-	paste.ngx.headers(o)
-	return ngx.print(o.message)
+
+--[[	  if o.type == 'json'
+	then o.header = 'html'
+  elseif o.type == 'text'
+  	then o.header = 'text'
+	 end--]]
+
+
+	   if o.type == nil
+	   or o.type == 'text'
+	 then o.header = 'text'
+	 	  paste.ngx.headers(o)
+	 	  return ngx.print(o.message)
+     else o.header = 'html'
+	 	  paste.ngx.headers(o)
+		  return template.render("source.html", {
+			title = 'source code viewer',
+			source = o.message
+
+		  })
+	  end
+
+
+--[[	return template.render("source.html", {
+		title = 'source code viewer',
+		source = t.message
+
+	})
+--]]
+	
 end
 
 -- get keyhash modules
-function paste.construct.textPlainMessage(object)
+function paste.construct.textPlainMessage(o)
 
-	local o = {}
+	-- local o = {}
 	local t = {}
 
-	o.hash = paste.redis.prefix.key .. ':' .. object.hash
-	t.data, err = red:get(o.hash)
+	-- t.header = object.header
+	-- o.hash = paste.redis.prefix.key .. ':' .. o.hash
+	t.data, err = red:get(paste.redis.prefix.key .. ':' .. o.hash)
 
 	  if type(t.data) == 'userdata'
 	then paste.exception.throw({
@@ -113,7 +145,7 @@ function paste.construct.textPlainMessage(object)
 		 })
 	end
 
-	  if (string.len(t.data) <= 14) -- length 14 is empty data of redis
+	  if (string.len(t.data) <= paste.settings.minRedisMessageLength) -- length 14 is empty data of redis
 	then paste.exception.throw({
 			code = 112,
 			header = 'text'
@@ -121,23 +153,20 @@ function paste.construct.textPlainMessage(object)
 		 })
 	end
 
-	t.header = 'text'
 	t.decodeParams = paste.protected.JSONdecode(t.data)
-	t.message = ngx.decode_base64(t.decodeParams.textareaBase64)
-	return paste.construct.message(t)
+	o.message = ngx.decode_base64(t.decodeParams.textareaBase64)
+	return paste.construct.message(o)
 end
 
 function paste.construct.htmlForm(o)
 	paste.ngx.headers(o)
-
 	return template.render("main.html", {
 		title = paste.titleFormPage,
-		path_assets = paste.path_assets,
 		js_settings = paste.protected.JSONencode(paste.settings)
-
 	})
 end
 
+-- save paste message
 function paste.construct.saveMessage(object)
 	local o = {}
 	local t = {}
@@ -303,21 +332,21 @@ end
 
 
 -- route objects
-function paste.router(object)
-	  if object.route == 'postClientMessage'
-	then paste.construct.saveMessage(object)
+function paste.router(o)
+	  if o.route == 'postClientMessage'
+	then paste.construct.saveMessage(o)
 	 end
 
-	  if object.route == 'index'
-	then paste.construct.htmlForm(object)
+	  if o.route == 'index'
+	then paste.construct.htmlForm(o)
 	 end
 
-	  if object.route == 'getClientPastedMessages'
-	then paste.construct.getPastesByFingerprint(object)
+	  if o.route == 'getClientPastedMessages'
+	then paste.construct.getPastesByFingerprint(o)
 	 end
 
-	  if object.route == 'message'
-	then paste.construct.textPlainMessage(object)
+	  if o.route == 'message'
+	then paste.construct.textPlainMessage(o)
 	 end
 end
 
@@ -374,40 +403,17 @@ function paste.combine(o)
 	-- return red:close();
 end
 
---[[function paste.combine(o)
-	local target = false
-
-	red:set_timeout(paste.redis.timeout)
-
-	 for host, port in pairs(paste.redis.mapPool)
-	  do local status, err = red:connect(host, port)
-	   	   if status
-	      then target = true
-			 return paste.router(o)
-		  end
-	 end
-
-	if target == false
-   then paste.exception.throw({
-   			message = 'Cannot connect to redis',
-   			header = 'json',
-			code = 108
-		})
-	end
-	
-
-end
---]]
 -- route
 function paste.route()
 
 	local o = {}
 	o.req = paste.split('/', ngx.var.request_uri)
+	
 	-- get paste message
-	  if o.req[3] == 'text'
-	  or string.len(o.req[2]) == paste.settings.hashUrlLen
+	  if string.len(o.req[2]) == paste.settings.hashUrlLen
 	then o.route = 'message'
 		 o.hash = o.req[2]
+		 o.type = o.req[3]
 		 return paste.combine(o)
 	 end
 
@@ -423,9 +429,10 @@ function paste.route()
 	  if o.req[2] == 'api'
 	 and o.req[3] == 'pastes'
 	 and ngx.var.request_method == 'GET'
-	 and string.len(o.req[4]) == 32
+	 and string.len(o.req[4]) == paste.md5Len
 	then o.route = 'getClientPastedMessages'
 		 o.fingerprint = o.req[4]
+		 o.header = 'json'
 		 return paste.combine(o)
 	 end
 
@@ -437,7 +444,7 @@ function paste.route()
 	 end
 
 	-- not found any
-	paste.exception.throw({
+	return paste.exception.throw({
 		message = 'Not found fail',
 		header = 'html',
 		code = 107
