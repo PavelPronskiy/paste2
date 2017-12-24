@@ -417,7 +417,8 @@ textarea#textarea-form {
 	z-index: 0;
 	color: #fff;
 	padding: 4px 10px;
-	text-shadow: 0px 0px 1px #3a3a3a
+	text-shadow: 0px 0px 1px #000;
+	background-color: rgba(0,0,0,0.1);
 }
 
 

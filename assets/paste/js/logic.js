@@ -30,12 +30,12 @@
 		}
 	};
 
-	el.copyrightsContainer = $('<div/>', {
+/*	el.copyrightsContainer = $('<div/>', {
 		'id': 'copyrights-wrapper',
 		'html': '&mdash; Copyright by pp' +
-				'<br />&mdash; Latest version: 0.49b'
+				'<br />&mdash; Latest version: 0.1.0'
 	});
-
+*/
 	el.contentContainer		= $('#content-container');
 	el.submitIcon 			= $("#form-submit-icon");
 
@@ -61,7 +61,7 @@
 	el.histContainer 		= $('<div/>'		, { 'id': 'history-container' });
 	el.mSuccessContainer 	= $('<div/>' 		, { 'id': 'modal-success-container' });
 
-	el.copyrightsContainer.appendTo('body');
+	// el.copyrightsContainer.appendTo('body');
 	el.itemsContent.appendTo(el.contentContainer);
 	el.headerContainer.appendTo(el.itemsContent);
 	el.formContainer.appendTo(el.itemsContent);
@@ -107,7 +107,7 @@
 			d.prepend = $('<li>', {
 				'html': '<div>' +
 					'<div>' +
-						icons.link + ' <a href="//' + d.itemUrl + '">' + d.itemUrl + '</a>' +
+						icons.link + ' <a href="//' + d.itemUrl + '/">' + d.itemUrl + '</a>' +
 					'</div>' +
 					'<div>' +
 						'<span> ' + icons.clock + d.created + '</span>' +
@@ -202,7 +202,7 @@
 
 	notice.success = function(object) {
 
-		var pasteLink = window.location.href + object.hashURL;
+		var pasteLink = window.location.href + object.hashURL + '/';
 		var successMessage = '<div id="message-url-container">' +
 			'<div class="success-message-container">' +
 				'<h3>Success!</h3>' +
